@@ -172,9 +172,9 @@ requests_api/
 │       └── response.go
 ├── deploy
 │   ├── docker-compose.yml
-│   └── init.sql
+│   ├── init.sql
+│   └── .env.example
 └── README.md
-
 ```
 
 ---
