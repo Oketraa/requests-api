@@ -1,10 +1,10 @@
 # Requests API
 
-REST API сервис для учета заявок на Go.
+REST API СЃРµСЂРІРёСЃ РґР»СЏ СѓС‡РµС‚Р° Р·Р°СЏРІРѕРє РЅР° Go.
 
 ---
 
-# Технологии
+# РўРµС…РЅРѕР»РѕРіРёРё
 
 - Go
 - PostgreSQL
@@ -14,36 +14,36 @@ REST API сервис для учета заявок на Go.
 
 ---
 
-# Возможности
+# Р’РѕР·РјРѕР¶РЅРѕСЃС‚Рё
 
-- Создание заявки
-- Получение всех заявок
-- Получение заявки по ID
-- Обновление заявки
-- Удаление заявки
+- РЎРѕР·РґР°РЅРёРµ Р·Р°СЏРІРєРё
+- РџРѕР»СѓС‡РµРЅРёРµ РІСЃРµС… Р·Р°СЏРІРѕРє
+- РџРѕР»СѓС‡РµРЅРёРµ Р·Р°СЏРІРєРё РїРѕ ID
+- РћР±РЅРѕРІР»РµРЅРёРµ Р·Р°СЏРІРєРё
+- РЈРґР°Р»РµРЅРёРµ Р·Р°СЏРІРєРё
 - Health check endpoint
 
 ---
 
-# Запуск проекта 
+# Р—Р°РїСѓСЃРє РїСЂРѕРµРєС‚Р° 
 
-## 1. Установить Docker Desktop
+## 1. РЈСЃС‚Р°РЅРѕРІРёС‚СЊ Docker Desktop
 
-Скачать:
+РЎРєР°С‡Р°С‚СЊ:
 
 https://www.docker.com/products/docker-desktop/
 
-После установки запустить Docker Desktop.
+РџРѕСЃР»Рµ СѓСЃС‚Р°РЅРѕРІРєРё Р·Р°РїСѓСЃС‚РёС‚СЊ Docker Desktop.
 
 ---
 
-## 2. Клонировать проект
+## 2. РљР»РѕРЅРёСЂРѕРІР°С‚СЊ РїСЂРѕРµРєС‚
 
 ```bash
 git clone <repository_url>
 ```
 
-Перейти в папку проекта:
+РџРµСЂРµР№С‚Рё РІ РїР°РїРєСѓ РїСЂРѕРµРєС‚Р°:
 
 ```bash
 cd requests-api
@@ -51,11 +51,11 @@ cd requests-api
 
 ---
 
-## 3. Создать .env файл
+## 3. РЎРѕР·РґР°С‚СЊ .env С„Р°Р№Р»
 
-Создать файл `.env` в корне проекта.
+РЎРѕР·РґР°С‚СЊ С„Р°Р№Р» `.env` РІ РєРѕСЂРЅРµ РїСЂРѕРµРєС‚Р°.
 
-Пример содержимого:
+РџСЂРёРјРµСЂ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ:
 
 ```env
 APP_PORT=8080
@@ -69,13 +69,13 @@ DB_NAME=requests_db
 
 ---
 
-## 4. Запустить проект
+## 4. Р—Р°РїСѓСЃС‚РёС‚СЊ РїСЂРѕРµРєС‚
 
 ```bash
 docker compose up --build
 ```
 
-После запуска сервер будет доступен:
+РџРѕСЃР»Рµ Р·Р°РїСѓСЃРєР° СЃРµСЂРІРµСЂ Р±СѓРґРµС‚ РґРѕСЃС‚СѓРїРµРЅ:
 
 ```text
 http://localhost:8080
@@ -83,7 +83,7 @@ http://localhost:8080
 
 ---
 
-# Проверка работы API
+# РџСЂРѕРІРµСЂРєР° СЂР°Р±РѕС‚С‹ API
 
 ---
 
@@ -97,7 +97,7 @@ curl http://localhost:8080/health
 
 ---
 
-# Получение всех заявок
+# РџРѕР»СѓС‡РµРЅРёРµ РІСЃРµС… Р·Р°СЏРІРѕРє
 
 ## GET /api/requests
 
@@ -107,11 +107,11 @@ curl http://localhost:8080/api/requests
 
 ---
 
-# Получение заявки по ID
+# РџРѕР»СѓС‡РµРЅРёРµ Р·Р°СЏРІРєРё РїРѕ ID
 
 ## GET /api/requests/{id}
 
-Пример:
+РџСЂРёРјРµСЂ:
 
 ```bash
 curl http://localhost:8080/api/requests/1
@@ -119,31 +119,31 @@ curl http://localhost:8080/api/requests/1
 
 ---
 
-# Создание заявки
+# РЎРѕР·РґР°РЅРёРµ Р·Р°СЏРІРєРё
 
 ## POST /api/requests
 
 ```bash
 curl -X POST http://localhost:8080/api/requests ^
   -H "Content-Type: application/json" ^
-  -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\"}"
+  -d "{\"title\":\"РџСЂРѕРІРµСЂРёС‚СЊ СЃРµСЂРІРµСЂ\",\"description\":\"РџСЂРѕРІРµСЂРёС‚СЊ nginx\"}"
 ```
 
 ---
 
-# Обновление заявки
+# РћР±РЅРѕРІР»РµРЅРёРµ Р·Р°СЏРІРєРё
 
 ## PUT /api/requests/{id}
 
 ```bash
 curl -X PUT http://localhost:8080/api/requests/1 ^
   -H "Content-Type: application/json" ^
-  -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\",\"status\":\"in_progress\"}"
+  -d "{\"title\":\"РџСЂРѕРІРµСЂРёС‚СЊ СЃРµСЂРІРµСЂ\",\"description\":\"РџСЂРѕРІРµСЂРёС‚СЊ nginx\",\"status\":\"in_progress\"}"
 ```
 
 ---
 
-# Удаление заявки
+# РЈРґР°Р»РµРЅРёРµ Р·Р°СЏРІРєРё
 
 ## DELETE /api/requests/{id}
 
@@ -153,31 +153,35 @@ curl -X DELETE http://localhost:8080/api/requests/1
 
 ---
 
-# Структура проекта
+# РЎС‚СЂСѓРєС‚СѓСЂР° РїСЂРѕРµРєС‚Р°
 
 ```text
 project/
 ?
-??? main.go
-??? go.mod
-??? go.sum
-??? Dockerfile
-??? docker-compose.yml
-??? README.md
-??? .env.example
-?
-??? database/
-?   ??? db.go
-?
-??? handlers/
-?   ??? request.go
-?
-??? models/
-    ??? request.go
+в”њв”Ђв”Ђ main.go
+в”њв”Ђв”Ђ go.mod
+в”њв”Ђв”Ђ go.sum
+в”њв”Ђв”Ђ Dockerfile
+в”њв”Ђв”Ђ docker-compose.yml
+в”њв”Ђв”Ђ README.md
+в”њв”Ђв”Ђ .env.example
+в”‚
+в”њв”Ђв”Ђ database/
+в”‚   в””в”Ђв”Ђ db.go
+в”‚
+в”њв”Ђв”Ђ handlers/
+в”‚   в””в”Ђв”Ђ request.go
+в”‚
+в”њв”Ђв”Ђ models/
+в”‚   в””в”Ђв”Ђ request.go
+в”‚
+в””в”Ђв”Ђ utils/
+    в””в”Ђв”Ђ response.go
 ```
 
 ---
 
-# Автор
+# РђРІС‚РѕСЂ
 
-Backend pet project на Go.
+Backend project РЅР° Go.
+Oketraa
