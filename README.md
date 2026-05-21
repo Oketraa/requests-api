@@ -156,27 +156,25 @@ curl -X DELETE http://localhost:8080/api/requests/1
 # Структура проекта
 
 ```text
-project/
-?
-├── main.go
-├── go.mod
-├── go.sum
-├── Dockerfile
-├── docker-compose.yml
-├── README.md
-├── .env.example
-│
-├── database/
-│   └── db.go
-│
-├── handlers/
-│   └── request.go
-│
-├── models/
-│   └── request.go
-│
-└── utils/
-    └── response.go
+requests_api/
+├── backend
+│   ├── database
+│   │   └── db.go
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   ├── handlers
+│   │   └── request.go
+│   ├── main.go
+│   ├── models
+│   │   └── request.go
+│   └── utils
+│       └── response.go
+├── deploy
+│   ├── docker-compose.yml
+│   └── init.sql
+└── README.md
+
 ```
 
 ---
