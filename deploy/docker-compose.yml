@@ -1,42 +1,31 @@
-version: '3.9'
-
 services:
-
   postgres:
-    image: postgres:16
-
-    container_name: requests_postgres
-
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-
-    ports:
-      - "5432:5432"
-
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+      image: postgres:16
+      container_name: requests_postgres
+      environment:
+        POSTGRES_USER: ${DB_USER}
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: ${DB_NAME}
+      restart: unless-stopped
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+        - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      networks:
+        - helpdesk_network
   app:
-    build: .
-
+    build: ../backend
     container_name: requests_app
-
     ports:
       - "${APP_PORT}:8080"
-
-    environment:
-      APP_PORT: ${APP_PORT}
-
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env
     depends_on:
       - postgres
-
+    networks:
+      - helpdesk_network
 volumes:
   postgres_data:
+networks:
+  helpdesk_network:
+    driver: bridge
