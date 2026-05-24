@@ -15,8 +15,8 @@ services:
   app:
     build: ../backend
     container_name: requests_app
-    ports:
-      - "${APP_PORT}:8080"
+    expose:
+      - "8080"
     restart: unless-stopped
     volumes:
       - ./.env:/app/.env
@@ -24,6 +24,18 @@ services:
       - postgres
     networks:
       - helpdesk_network
+  nginx:
+    image: nginx:latest
+    container_name: requests_nginx
+    ports:
+      - "80:80" 
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro  
+    depends_on:
+      - app
+    networks:
+      - helpdesk_network
+
 volumes:
   postgres_data:
 networks:
