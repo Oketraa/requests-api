@@ -124,7 +124,7 @@ curl http://localhost:8080/api/requests/1
 ## POST /api/requests
 
 ```bash
-curl -X POST http://localhost:8080/api/requests ^
+curl -X POST http://localhost:8080/api/requests/create ^
   -H "Content-Type: application/json" ^
   -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\"}"
 ```
