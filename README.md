@@ -9,6 +9,7 @@ REST API сервис для учета заявок на Go.
 - Go
 - PostgreSQL
 - Docker
+- Nginx (Reverse Proxy)
 - REST API
 - Git
 
@@ -78,7 +79,7 @@ docker compose up --build
 После запуска сервер будет доступен:
 
 ```text
-http://localhost:8080
+http://localhost
 ```
 
 ---
@@ -92,7 +93,7 @@ http://localhost:8080
 ## GET /health
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost/health
 ```
 
 ---
@@ -102,7 +103,7 @@ curl http://localhost:8080/health
 ## GET /api/requests
 
 ```bash
-curl http://localhost:8080/api/requests
+curl http://localhost/api/requests
 ```
 
 ---
@@ -114,7 +115,7 @@ curl http://localhost:8080/api/requests
 Пример:
 
 ```bash
-curl http://localhost:8080/api/requests/1
+curl http://localhost/api/requests/1
 ```
 
 ---
@@ -124,7 +125,7 @@ curl http://localhost:8080/api/requests/1
 ## POST /api/requests
 
 ```bash
-curl -X POST http://localhost:8080/api/requests/create ^
+curl -X POST http://localhost/api/requests/create ^
   -H "Content-Type: application/json" ^
   -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\"}"
 ```
@@ -136,7 +137,7 @@ curl -X POST http://localhost:8080/api/requests/create ^
 ## PUT /api/requests/{id}
 
 ```bash
-curl -X PUT http://localhost:8080/api/requests/1 ^
+curl -X PUT http://localhost/api/requests/1 ^
   -H "Content-Type: application/json" ^
   -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\",\"status\":\"in_progress\"}"
 ```
@@ -148,7 +149,7 @@ curl -X PUT http://localhost:8080/api/requests/1 ^
 ## DELETE /api/requests/{id}
 
 ```bash
-curl -X DELETE http://localhost:8080/api/requests/1
+curl -X DELETE http://localhost/api/requests/1
 ```
 
 ---
@@ -173,6 +174,7 @@ requests_api/
 ├── deploy
 │   ├── docker-compose.yml
 │   ├── init.sql
+│   └── nginx.conf
 │   └── .env.example
 └── README.md
 ```
