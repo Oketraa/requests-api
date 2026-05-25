@@ -150,7 +150,39 @@ curl -X PUT http://localhost:8080/api/requests/1 ^
 ```bash
 curl -X DELETE http://localhost:8080/api/requests/1
 ```
+---
+# Скрипты эксплуатации (DevOps 4)
 
+## Запуск проекта
+```bash
+./deploy/scripts/start.sh
+```
+
+## Остановка проекта
+```bash
+./deploy/scripts/stop.sh
+```
+
+## Просмотр логов
+```bash
+# Все сервисы
+./deploy/scripts/logs.sh
+
+# Конкретный сервис
+./deploy/scripts/logs.sh backend
+```
+
+## Резервное копирование базы данных
+```bash
+./deploy/scripts/backup_db.sh
+```
+Бэкап сохраняется в папку `deploy/backups/` с именем вида `backup_2026-01-01_12-00-00.sql`
+
+## Восстановление базы из бэкапа
+```bash
+cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
+  docker compose exec -T postgres psql -U app_user requests_db
+```
 ---
 
 # Структура проекта
