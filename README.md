@@ -25,7 +25,7 @@ REST API сервис для учета заявок на Go.
 
 ---
 
-# Запуск проекта 
+# Запуск проекта
 
 ## 1. Установить Docker Desktop
 
@@ -53,13 +53,12 @@ cd requests-api
 
 ## 3. Создать .env файл
 
-Создать файл `.env` в корне проекта.
+Создать файл `.env` в папке `deploy`.
 
 Пример содержимого:
 
 ```env
 APP_PORT=8080
-
 DB_HOST=postgres
 DB_PORT=5432
 DB_USER=app_user
@@ -124,8 +123,8 @@ curl http://localhost:8080/api/requests/1
 ## POST /api/requests
 
 ```bash
-curl -X POST http://localhost:8080/api/requests ^
-  -H "Content-Type: application/json" ^
+curl -X POST http://localhost:8080/api/requests \
+  -H "Content-Type: application/json" \
   -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\"}"
 ```
 
@@ -136,8 +135,8 @@ curl -X POST http://localhost:8080/api/requests ^
 ## PUT /api/requests/{id}
 
 ```bash
-curl -X PUT http://localhost:8080/api/requests/1 ^
-  -H "Content-Type: application/json" ^
+curl -X PUT http://localhost:8080/api/requests/1 \
+  -H "Content-Type: application/json" \
   -d "{\"title\":\"Проверить сервер\",\"description\":\"Проверить nginx\",\"status\":\"in_progress\"}"
 ```
 
@@ -150,20 +149,25 @@ curl -X PUT http://localhost:8080/api/requests/1 ^
 ```bash
 curl -X DELETE http://localhost:8080/api/requests/1
 ```
+
 ---
+
 # Скрипты эксплуатации (DevOps 4)
 
 ## Запуск проекта
+
 ```bash
 ./deploy/scripts/start.sh
 ```
 
 ## Остановка проекта
+
 ```bash
 ./deploy/scripts/stop.sh
 ```
 
 ## Просмотр логов
+
 ```bash
 # Все сервисы
 ./deploy/scripts/logs.sh
@@ -173,16 +177,50 @@ curl -X DELETE http://localhost:8080/api/requests/1
 ```
 
 ## Резервное копирование базы данных
+
 ```bash
 ./deploy/scripts/backup_db.sh
 ```
+
 Бэкап сохраняется в папку `deploy/backups/` с именем вида `backup_2026-01-01_12-00-00.sql`
 
 ## Восстановление базы из бэкапа
+
+### Стратегия резервного копирования
+
+- Бэкапы создаются вручную командой `./deploy/scripts/backup_db.sh`
+- Каждый бэкап сохраняется в отдельный файл с датой и временем
+- Файлы хранятся в папке `deploy/backups/`
+- Формат имени файла: `backup_ГГГГ-ММ-ДД_ЧЧ-ММ-СС.sql`
+- Рекомендуется делать бэкап перед каждым обновлением проекта
+
+### Порядок восстановления
+
+1. Убедись что проект запущен:
+
+```bash
+./deploy/scripts/start.sh
+```
+
+2. Посмотри список доступных бэкапов:
+
+```bash
+ls -la deploy/backups/
+```
+
+3. Восстанови нужный бэкап:
+
 ```bash
 cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
   docker compose exec -T postgres psql -U app_user requests_db
 ```
+
+4. Проверь что данные восстановились:
+
+```bash
+curl http://localhost/api/requests
+```
+
 ---
 
 # Структура проекта
@@ -190,22 +228,22 @@ cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
 ```text
 requests_api/
 ├── backend
-│   ├── database
-│   │   └── db.go
-│   ├── Dockerfile
-│   ├── go.mod
-│   ├── go.sum
-│   ├── handlers
-│   │   └── request.go
-│   ├── main.go
-│   ├── models
-│   │   └── request.go
-│   └── utils
-│       └── response.go
+│   ├── database
+│   │   └── db.go
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   ├── handlers
+│   │   └── request.go
+│   ├── main.go
+│   ├── models
+│   │   └── request.go
+│   └── utils
+│       └── response.go
 ├── deploy
-│   ├── docker-compose.yml
-│   ├── init.sql
-│   └── .env.example
+│   ├── docker-compose.yml
+│   ├── init.sql
+│   └── .env.example
 └── README.md
 ```
 
