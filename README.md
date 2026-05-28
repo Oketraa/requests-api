@@ -153,7 +153,75 @@ curl -X DELETE http://localhost/api/requests/1
 ```
 
 ---
+# Скрипты эксплуатации (DevOps 4)
 
+## Запуск проекта
+
+```bash
+./deploy/scripts/start.sh
+```
+
+## Остановка проекта
+
+```bash
+./deploy/scripts/stop.sh
+```
+
+## Просмотр логов
+
+```bash
+# Все сервисы
+./deploy/scripts/logs.sh
+
+# Конкретный сервис
+./deploy/scripts/logs.sh backend
+```
+
+## Резервное копирование базы данных
+
+```bash
+./deploy/scripts/backup_db.sh
+```
+
+Бэкап сохраняется в папку `deploy/backups/` с именем вида `backup_2026-01-01_12-00-00.sql`
+
+## Восстановление базы из бэкапа
+
+### Стратегия резервного копирования
+
+- Бэкапы создаются вручную командой `./deploy/scripts/backup_db.sh`
+- Каждый бэкап сохраняется в отдельный файл с датой и временем
+- Файлы хранятся в папке `deploy/backups/`
+- Формат имени файла: `backup_ГГГГ-ММ-ДД_ЧЧ-ММ-СС.sql`
+- Рекомендуется делать бэкап перед каждым обновлением проекта
+
+### Порядок восстановления
+
+1. Убедись что проект запущен:
+
+```bash
+./deploy/scripts/start.sh
+```
+
+2. Посмотри список доступных бэкапов:
+
+```bash
+ls -la deploy/backups/
+```
+
+3. Восстанови нужный бэкап:
+
+```bash
+cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
+  docker compose exec -T postgres psql -U app_user requests_db
+```
+
+4. Проверь что данные восстановились:
+
+```bash
+curl http://localhost/api/requests
+```
+---
 # Структура проекта
 
 ```text
