@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"study/database"
 	"study/handlers"
-
-	"github.com/joho/godotenv"
 )
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,14 +12,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	err := godotenv.Load()
-
-	if err != nil {
-		fmt.Println("Error loading env")
-		return
-	}
-
-	err = database.ConnectDB()
+	err := database.ConnectDB()
 
 	if err != nil {
 		fmt.Println("Database connection error:", err)
