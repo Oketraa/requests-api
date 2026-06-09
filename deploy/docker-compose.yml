@@ -64,7 +64,32 @@ services:
     volumes:
       - ../monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro,Z
       - ../monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro,Z
-      - grafana_storage:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
+    networks:
+      - helpdesk_network
+  loki:
+    image: grafana/loki:3.7.2
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ../monitoring/loki:/etc/loki:ro,Z
+      - loki_data:/var/loki:rw,Z
+    networks:
+      - helpdesk_network
+  alloy:
+    image: grafana/alloy:v1.17.0-rc.0
+    container_name: alloy
+    privileged: true
+    restart: unless-stopped
+    environment:
+      - CONTAINER_ALLOY_SOCKET=${CONTAINER_ALLOY_SOCKET:-unix:///var/run/engine/docker.sock}
+    command:
+      - 'run'
+      - '/etc/alloy/config.alloy'
+      - '--storage.path=/tmp/alloy'
+    volumes:
+      - ../monitoring/alloy:/etc/alloy:ro,Z
+      - ${CONTAINER_RUNTIME_DIR:-/var/run}:/var/run:ro
     networks:
       - helpdesk_network
   cadvisor:
@@ -74,12 +99,13 @@ services:
     privileged: true
     volumes:
       - /:/rootfs:ro
-      - /run/user/1000:/run/user/1000:ro
+      - /dev:/dev:ro
+      - ${CONTAINER_RUNTIME_DIR:-/var/run}:/var/run:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/machine-id:/etc/machine-id:ro
-      - ${DOCKER_STORAGE_PATH:-/var/lib/docker}:/var/lib/containers:ro
+      - ${CONTAINER_STORAGE_PATH:-/var/lib/docker.sock}:/var/lib/docker:ro
     command:
-      - '--podman=unix:///run/user/1000/podman/podman.sock'
+      - '${CONTAINER_CADVISOR_COMMAND:---docker=unix:///var/run/docker.sock}'
     networks:
       - helpdesk_network
   node-exporter:
@@ -110,7 +136,8 @@ services:
 volumes:
   postgres_data:
   prometheus_data:
-  grafana_storage:
+  grafana_data:
+  loki_data:
 networks:
   helpdesk_network:
     driver: bridge
