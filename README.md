@@ -221,6 +221,47 @@ cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
 ```bash
 curl http://localhost/api/requests
 ```
+### Восстановление через скрипт
+
+```bash
+./deploy/scripts/restore_db.sh ./deploy/backups/backup_2026-01-01_12-00-00.sql
+```
+
+Скрипт автоматически проверяет что файл существует и не пустой.
+
+### Ротация бэкапов
+
+Автоматически хранятся последние 5 бэкапов — старые удаляются при создании нового.
+
+---
+
+## Безопасность
+
+Nginx настроен со следующими мерами защиты:
+
+- Security headers — защита от XSS и clickjacking
+- Rate limiting — не более 10 запросов в секунду с одного IP
+- Ограничение размера запроса — максимум 1MB
+
+Проверить headers:
+```bash
+curl -I http://localhost/health
+```
+
+---
+
+## Healthcheck
+
+Контейнеры имеют автоматические проверки состояния:
+
+- `postgres` — проверяется через `pg_isready`
+- `app` — проверяется через `GET /health`
+- `nginx` — запускается только после того как `app` стал healthy
+
+Проверить статус:
+```bash
+docker compose -f deploy/docker-compose.yml ps
+```
 ---
 # Структура проекта
 
