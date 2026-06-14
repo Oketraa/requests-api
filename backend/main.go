@@ -5,13 +5,10 @@ import (
 	"net/http"
 	"study/database"
 	"study/handlers"
+	"study/middleware"
 
 	"github.com/joho/godotenv"
 )
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`{"status":"ok"}`))
-}
 
 func main() {
 	err := godotenv.Load()
@@ -28,11 +25,20 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/api/requests", handlers.GetRequests)
-	http.HandleFunc("/api/requests/", handlers.RequestByID)
-	http.HandleFunc("/api/requests/create", handlers.CreateRequest)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", handlers.Health)
+	mux.HandleFunc("/live", handlers.Live)
+	mux.HandleFunc("/ready", handlers.Ready)
+	mux.HandleFunc("/api/requests", handlers.GetRequests)
+	mux.HandleFunc("/api/requests/", handlers.RequestByID)
+	mux.HandleFunc("/api/requests/create", handlers.CreateRequest)
+
+	handler := middleware.RequestID(mux)
+	handler = middleware.Logger(handler)
+	handler = middleware.Recovery(handler)
+	handler = middleware.Cors(handler)
 
 	fmt.Println("Server started on port 8080")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", handler)
 }
