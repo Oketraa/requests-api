@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'Мониторинг системы технической поддержки'
+    orgId: 1
+    folder: 'Техническая поддержка'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

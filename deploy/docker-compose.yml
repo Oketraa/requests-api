@@ -62,8 +62,9 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
     volumes:
-      - ../monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro,Z
-      - ../monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro,Z
+      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro,Z
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro,Z
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
       - grafana_data:/var/lib/grafana
     networks:
       - helpdesk_network
@@ -82,14 +83,14 @@ services:
     privileged: true
     restart: unless-stopped
     environment:
-      - CONTAINER_ALLOY_SOCKET=${CONTAINER_ALLOY_SOCKET:-unix:///var/run/engine/docker.sock}
+      - CONTAINER_ALLOY_SOCKET=${ALLOY_SOCKET:-unix:///var/run/docker.sock}
     command:
       - 'run'
       - '/etc/alloy/config.alloy'
       - '--storage.path=/tmp/alloy'
     volumes:
       - ../monitoring/alloy:/etc/alloy:ro,Z
-      - ${CONTAINER_RUNTIME_DIR:-/var/run}:/var/run:ro
+      - ${ALLOY_RUNTIME:-/var/run}:/var/run:ro
     networks:
       - helpdesk_network
   cadvisor:
@@ -100,18 +101,17 @@ services:
     volumes:
       - /:/rootfs:ro
       - /dev:/dev:ro
-      - ${CONTAINER_RUNTIME_DIR:-/var/run}:/var/run:ro
+      - ${CADVISOR_RUNTIME:-/var/run}:/var/run:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /etc/machine-id:/etc/machine-id:ro
-      - ${CONTAINER_STORAGE_PATH:-/var/lib/docker.sock}:/var/lib/docker:ro
-    command:
-      - '${CONTAINER_CADVISOR_COMMAND:---docker=unix:///var/run/docker.sock}'
+      - ${CONTAINER_STORAGE_PATH:-/var/lib/docker}:/var/lib/docker:ro
     networks:
       - helpdesk_network
   node-exporter:
     image: prom/node-exporter:v1.8.1
     container_name: node-exporter
     restart: unless-stopped
+    privileged: true
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
