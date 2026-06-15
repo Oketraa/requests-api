@@ -7,13 +7,10 @@ import (
 	"study/database"
 	"study/handlers"
 	"study/metrics"
+	"study/middleware"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`{"status":"ok"}`))
-}
 
 func main() {
 	err := database.ConnectDB()
@@ -35,4 +32,20 @@ func main() {
 	if err := http.ListenAndServe(":8080", wrappedServer); err != nil {
 		log.Fatal(err)
 	}
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", handlers.Health)
+	mux.HandleFunc("/live", handlers.Live)
+	mux.HandleFunc("/ready", handlers.Ready)
+	mux.HandleFunc("/api/requests", handlers.GetRequests)
+	mux.HandleFunc("/api/requests/", handlers.RequestByID)
+	mux.HandleFunc("/api/requests/create", handlers.CreateRequest)
+
+	handler := middleware.RequestID(mux)
+	handler = middleware.Logger(handler)
+	handler = middleware.Recovery(handler)
+	handler = middleware.Cors(handler)
+
+	fmt.Println("Server started on port 8080")
+	http.ListenAndServe(":8080", handler)
 }

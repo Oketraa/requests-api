@@ -112,16 +112,17 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input models.UpdateRequestInput
-
 	err = json.NewDecoder(r.Body).Decode(&input)
 
-	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	validationError := utils.UpdateValidator(input)
+
+	if validationError != "" {
+		utils.WriteError(w, http.StatusBadRequest, validationError)
 		return
 	}
 
-	if !models.AllowedStatus[input.Status] {
-		http.Error(w, "invalid status", http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -165,6 +166,13 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	validationError := utils.CreateValidator(input)
+
+	if validationError != "" {
+		utils.WriteError(w, http.StatusBadRequest, validationError)
 		return
 	}
 
