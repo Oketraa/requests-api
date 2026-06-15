@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"study/database"
 	"study/handlers"
-	"study/monitoring"
+	"study/metrics"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -29,7 +29,7 @@ func main() {
 	http.HandleFunc("/api/requests/create", handlers.CreateRequest)
 	http.Handle("/metrics", promhttp.Handler())
 
-	wrappedServer := monitoring.MetricsMiddleware(http.DefaultServeMux)
+	wrappedServer := metrics.MetricsMiddleware(http.DefaultServeMux)
 
 	fmt.Println("Server started on port 8080")
 	if err := http.ListenAndServe(":8080", wrappedServer); err != nil {

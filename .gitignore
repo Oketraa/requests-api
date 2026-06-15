@@ -1,5 +1,5 @@
 # ENV
-.env
+deploy/.env
 
 # Binaries
 *.exe

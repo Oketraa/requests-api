@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"study/database"
+	"study/metrics"
 	"study/models"
-	"study/monitoring"
 	"study/utils"
 	"time"
 )
@@ -29,7 +29,7 @@ func GetRequests(w http.ResponseWriter, r *http.Request) {
 	}
 
 	duration := time.Since(start).Seconds()
-	monitoring.DatabaseQueryDuration.Observe(duration)
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	defer rows.Close()
 	var requests []models.Request
@@ -97,7 +97,7 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	duration := time.Since(start).Seconds()
-	monitoring.DatabaseQueryDuration.Observe(duration)
+	metrics.DatabaseQueryDuration.Observe(duration)
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
@@ -149,7 +149,7 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 		&request.UpdatedAt,
 	)
 	duration := time.Since(start).Seconds()
-	monitoring.DatabaseQueryDuration.Observe(duration)
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	if err != nil {
 		http.Error(w, "request not found", http.StatusNotFound)
@@ -194,7 +194,7 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	duration := time.Since(start).Seconds()
-	monitoring.DatabaseQueryDuration.Observe(duration)
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	utils.WriteJSON(w, http.StatusCreated, request)
 }
@@ -241,7 +241,7 @@ func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	duration := time.Since(start).Seconds()
-	monitoring.DatabaseQueryDuration.Observe(duration)
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	rowsAffected, err := result.RowsAffected()
 

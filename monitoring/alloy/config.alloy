@@ -1,5 +1,5 @@
 discovery.docker "containers" {
-  host = sys.env("CONTAINER_ALLOY_SOCKET")
+  host = "unix:///var/run/docker.sock"
 }
 
 discovery.relabel "app_filter" {
@@ -12,7 +12,7 @@ discovery.relabel "app_filter" {
 }
 
 loki.source.docker "app_logs_stream" {
-  host       = sys.env("CONTAINER_ALLOY_SOCKET")
+  host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.app_filter.output
   forward_to = [loki.process.parse_app_json.receiver]
 }
@@ -56,7 +56,7 @@ discovery.relabel "nginx_filter" {
 }
 
 loki.source.docker "nginx_logs_stream" {
-  host       = sys.env("CONTAINER_ALLOY_SOCKET")
+  host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.nginx_filter.output
   forward_to = [loki.process.parse_nginx_json.receiver]
 }
