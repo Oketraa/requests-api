@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"study/database"
 	"study/handlers"
 	"study/metrics"
@@ -12,7 +14,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const JSON_Log = true
+
 func main() {
+	if JSON_Log {
+		// Включаем глобальный JSON-режим для slog (Пункт 13.6)
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		slog.SetDefault(logger)
+	} else {
+		// Настройки дефолтного текстового логгера для 13.4 (если нужны кастомные префиксы)
+		log.SetFlags(log.LstdFlags)
+	}
 	// 1. Инициализируем базу данных
 	err := database.ConnectDB()
 	if err != nil {
@@ -37,8 +49,8 @@ func main() {
 
 	// 6. Накатываем инфраструктурные мидлвари бэкендера на роутер
 	// Цепочка идет снизу вверх: Cors -> Recovery -> Logger -> RequestID -> Роутер
-	handler := middleware.RequestID(mux)
-	handler = middleware.Logger(handler)
+	handler := middleware.Logger(JSON_Log)(mux)
+	handler = middleware.RequestID(handler)
 	handler = middleware.Recovery(handler)
 	handler = middleware.Cors(handler)
 

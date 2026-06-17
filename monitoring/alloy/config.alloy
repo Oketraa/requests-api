@@ -4,23 +4,38 @@ discovery.docker "containers" {
 
 discovery.relabel "app_filter" {
   targets = discovery.docker.containers.targets
+
+  // Шаг 1: Фильтруем только наш контейнер
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex         = "/requests_app"
     action        = "keep"
   }
+
+  // Шаг 2: Вытаскиваем имя Compose-проекта в лейбл "project"
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+    action        = "replace"
+  }
+
+  // Шаг 3: Вытаскиваем имя Compose-сервиса в лейбл "service"
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+    action        = "replace"
+  }
 }
 
 loki.source.docker "app_logs_stream" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.relabel.app_filter.output
+  host    = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.app_filter.output
   forward_to = [loki.process.parse_app_json.receiver]
 }
 
 loki.process "parse_app_json" {
   stage.json {
     expressions = {
-      log_time    = "time",
       log_level   = "level",
       req_id      = "request_id",
       http_method = "method",
@@ -32,15 +47,8 @@ loki.process "parse_app_json" {
   stage.labels {
     values = {
       level     = "log_level",
-      method    = "http_method",
-      status    = "http_status",
       component = "backend",
     }
-  }
-
-  stage.timestamp {
-    source = "log_time"
-    format = "RFC3339"
   }
 
   forward_to = [loki.write.loki_backend.receiver]
@@ -48,44 +56,55 @@ loki.process "parse_app_json" {
 
 discovery.relabel "nginx_filter" {
   targets = discovery.docker.containers.targets
+
+  // Шаг 1: Фильтруем Nginx
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/nginx"
+    regex         = "/requests_nginx"
     action        = "keep"
+  }
+
+  // Шаг 2: Вытаскиваем имя Compose-проекта
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+    action        = "replace"
+  }
+
+  // Шаг 3: Вытаскиваем имя Compose-сервиса
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+    action        = "replace"
   }
 }
 
 loki.source.docker "nginx_logs_stream" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.relabel.nginx_filter.output
+  host    = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.nginx_filter.output
   forward_to = [loki.process.parse_nginx_json.receiver]
 }
 
 loki.process "parse_nginx_json" {
+  // Сверяем строго с: "time","level","request_id","method","path","status","latency_ms","client_ip","user_agent"
   stage.json {
     expressions = {
-      log_time    = "time",
-      client_ip   = "remote_addr",
+      log_level   = "level",
       req_id      = "request_id",
       http_method = "method",
-      http_url    = "url",
+      http_path   = "path",
       http_status = "status",
-      req_time    = "request_time",
+      latency     = "latency_ms",
+      client_ip   = "client_ip",
       user_agent  = "user_agent",
     }
   }
 
   stage.labels {
     values = {
-      method    = "http_method",
-      status    = "http_status",
+      level     = "log_level",
       component = "nginx",
     }
-  }
-
-  stage.timestamp {
-    source = "log_time"
-    format = "RFC3339"
   }
 
   forward_to = [loki.write.loki_backend.receiver]
