@@ -14,14 +14,44 @@ import (
 )
 
 func GetRequests(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	limit := 10
+
+	pagePar := r.URL.Query().Get("page")
+	limitPar := r.URL.Query().Get("limit")
+
+	if pagePar != "" {
+		pageNum, err := strconv.Atoi(pagePar)
+
+		if err == nil && pageNum > 0 {
+			page = pageNum
+		}
+	}
+
+	if limitPar != "" {
+		limitNum, err := strconv.Atoi(limitPar)
+
+		if err == nil && limitNum > 0 {
+			limit = limitNum
+		}
+	}
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
 	query := `
-		SELECT id, title, description, status, created_at, updated_at
-		FROM requests
-		ORDER BY id ASC
-	`
+        SELECT id, title, description, status, created_at, updated_at
+        FROM requests
+        ORDER BY id ASC
+        LIMIT $1
+        OFFSET $2
+    `
 
 	start := time.Now()
-	rows, err := database.DB.QueryContext(r.Context(), query)
+	rows, err := database.DB.QueryContext(r.Context(), query, limit, offset)
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
