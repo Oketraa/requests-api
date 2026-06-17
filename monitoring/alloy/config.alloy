@@ -1,0 +1,98 @@
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "app_filter" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/requests_app"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "app_logs_stream" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.app_filter.output
+  forward_to = [loki.process.parse_app_json.receiver]
+}
+
+loki.process "parse_app_json" {
+  stage.json {
+    expressions = {
+      log_time    = "time",
+      log_level   = "level",
+      req_id      = "request_id",
+      http_method = "method",
+      http_status = "status",
+      msg_error   = "error",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level     = "log_level",
+      method    = "http_method",
+      status    = "http_status",
+      component = "backend",
+    }
+  }
+
+  stage.timestamp {
+    source = "log_time"
+    format = "RFC3339"
+  }
+
+  forward_to = [loki.write.loki_backend.receiver]
+}
+
+discovery.relabel "nginx_filter" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/nginx"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "nginx_logs_stream" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.nginx_filter.output
+  forward_to = [loki.process.parse_nginx_json.receiver]
+}
+
+loki.process "parse_nginx_json" {
+  stage.json {
+    expressions = {
+      log_time    = "time",
+      client_ip   = "remote_addr",
+      req_id      = "request_id",
+      http_method = "method",
+      http_url    = "url",
+      http_status = "status",
+      req_time    = "request_time",
+      user_agent  = "user_agent",
+    }
+  }
+
+  stage.labels {
+    values = {
+      method    = "http_method",
+      status    = "http_status",
+      component = "nginx",
+    }
+  }
+
+  stage.timestamp {
+    source = "log_time"
+    format = "RFC3339"
+  }
+
+  forward_to = [loki.write.loki_backend.receiver]
+}
+
+loki.write "loki_backend" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:17.10-alpine3.22
     container_name: requests_postgres
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - helpdesk_network
     healthcheck:
@@ -25,8 +25,12 @@ services:
     expose:
       - "8080"
     restart: unless-stopped
-    volumes:
-      - ./.env:/app/.env
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,7 +44,7 @@ services:
       start_period: 10s
 
   nginx:
-    image: nginx:latest
+    image: nginx:1.31.1-alpine
     container_name: requests_nginx
     ports:
       - "80:80"
@@ -52,8 +56,110 @@ services:
     networks:
       - helpdesk_network
 
+  prometheus:
+    image: prom/prometheus:v3.12.0-distroless
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    volumes:
+      - ../monitoring/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    networks:
+      - helpdesk_network
+
+  grafana:
+    image: grafana/grafana:13.1.0-25893932881
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - helpdesk_network
+
+  loki:
+    image: grafana/loki:3.7.2
+    container_name: loki
+    user: "root"
+    restart: unless-stopped
+    volumes:
+      - ../monitoring/loki:/etc/loki:ro
+      - loki_data:/var/loki:rw
+    networks:
+      - helpdesk_network
+
+  alloy:
+    image: grafana/alloy:v1.17.0
+    container_name: alloy
+    privileged: true
+    restart: unless-stopped
+    command:
+      - 'run'
+      - '/etc/alloy/config.alloy'
+      - '--storage.path=/tmp/alloy'
+    volumes:
+      - ../monitoring/alloy:/etc/alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - helpdesk_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /dev:/dev:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - helpdesk_network
+
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)'
+    networks:
+      - helpdesk_network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.19.1
+    container_name: postgres-exporter
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+    networks:
+      - helpdesk_network
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   helpdesk_network:

@@ -7,23 +7,59 @@ import (
 	"strconv"
 	"strings"
 	"study/database"
+	"study/metrics"
 	"study/models"
 	"study/utils"
+	"time"
 )
 
 func GetRequests(w http.ResponseWriter, r *http.Request) {
-	query := `
-		SELECT id, title, description, status, created_at, updated_at
-		FROM requests
-		ORDER BY id ASC
-	`
+	page := 1
+	limit := 10
 
-	rows, err := database.DB.Query(query)
+	pagePar := r.URL.Query().Get("page")
+	limitPar := r.URL.Query().Get("limit")
+
+	if pagePar != "" {
+		pageNum, err := strconv.Atoi(pagePar)
+
+		if err == nil && pageNum > 0 {
+			page = pageNum
+		}
+	}
+
+	if limitPar != "" {
+		limitNum, err := strconv.Atoi(limitPar)
+
+		if err == nil && limitNum > 0 {
+			limit = limitNum
+		}
+	}
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+        SELECT id, title, description, status, created_at, updated_at
+        FROM requests
+        ORDER BY id ASC
+        LIMIT $1
+        OFFSET $2
+    `
+
+	start := time.Now()
+	rows, err := database.DB.QueryContext(r.Context(), query, limit, offset)
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	defer rows.Close()
 	var requests []models.Request
@@ -69,7 +105,8 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 
 	var request models.Request
 
-	err = database.DB.QueryRow(query, id).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, id).Scan(
 		&request.ID,
 		&request.Title,
 		&request.Description,
@@ -89,6 +126,8 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
@@ -134,17 +173,14 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	request.Description = input.Description
 	request.Status = input.Status
 
-	err = database.DB.QueryRow(
-		query,
-		input.Title,
-		input.Description,
-		input.Status,
-		id,
-	).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, input.Title, input.Description, input.Status, id).Scan(
 		&request.ID,
 		&request.CreatedAt,
 		&request.UpdatedAt,
 	)
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	if err != nil {
 		http.Error(w, "request not found", http.StatusNotFound)
@@ -182,11 +218,8 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 	request.Description = input.Description
 	request.Status = "new"
 
-	err = database.DB.QueryRow(
-		query,
-		input.Title,
-		input.Description,
-	).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, input.Title, input.Description).Scan(
 		&request.ID,
 		&request.Status,
 		&request.CreatedAt,
@@ -198,7 +231,10 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, request)
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
+
+	utils.WriteJSON(w, http.StatusCreated, request)
 }
 
 func RequestByID(w http.ResponseWriter, r *http.Request) {
@@ -234,12 +270,16 @@ func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 		DELETE FROM requests
 		WHERE id = $1
 	`
-	result, err := database.DB.Exec(query, id)
+	start := time.Now()
+	result, err := database.DB.ExecContext(r.Context(), query, id)
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	rowsAffected, err := result.RowsAffected()
 
@@ -252,5 +292,5 @@ func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 		"message": "request deleted",
 	}
 
-	utils.WriteJSON(w, http.StatusOK, response)
+	utils.WriteJSON(w, http.StatusNoContent, response)
 }

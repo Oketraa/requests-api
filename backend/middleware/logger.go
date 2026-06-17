@@ -6,12 +6,14 @@ import (
 	"time"
 )
 
+// Правильная обертка для перехвата статуса
 type responseWriter struct {
 	http.ResponseWriter
 	status int
 }
 
-func (rw *responseWriter) Header(code int) {
+// Переопределяем именно WriteHeader!
+func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
 }
@@ -22,10 +24,12 @@ func Logger(next http.Handler) http.Handler {
 
 		rw := &responseWriter{
 			ResponseWriter: w,
-			status:         http.StatusOK,
+			status:         http.StatusOK, // Дефолтный статус, если WriteHeader не вызовут явно
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(rw, r)
+
+		// Теперь тут будет выводиться реальный статус (например, 404 или 500), а не всегда 200
 		log.Printf("%s %s %d %v", r.Method, r.URL.Path, rw.status, time.Since(start))
 	})
 }
