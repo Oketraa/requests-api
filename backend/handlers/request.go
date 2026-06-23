@@ -19,6 +19,18 @@ func GetRequests(w http.ResponseWriter, r *http.Request) {
 
 	pagePar := r.URL.Query().Get("page")
 	limitPar := r.URL.Query().Get("limit")
+	status := r.URL.Query().Get("status")
+	sort := r.URL.Query().Get("sort")
+
+	orderBy := "id"
+
+	if sort == "created_at" {
+		orderBy = "created_at"
+	}
+
+	if sort == "updated_at" {
+		orderBy = "updated_at"
+	}
 
 	if pagePar != "" {
 		pageNum, err := strconv.Atoi(pagePar)
@@ -42,24 +54,61 @@ func GetRequests(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	query := `
-        SELECT id, title, description, status, created_at, updated_at
-        FROM requests
-        ORDER BY id ASC
-        LIMIT $1
-        OFFSET $2
-    `
+	var (
+		query string
+		rows  *sql.Rows
+		err   error
+	)
 
-	start := time.Now()
-	rows, err := database.DB.QueryContext(r.Context(), query, limit, offset)
+	if status != "" {
+		query = `
+			SELECT id, title, description, status, created_at, updated_at
+			FROM requests
+			WHERE status = $1
+			ORDER BY ` + orderBy + ` ASC
+			LIMIT $2
+			OFFSET $3
+		`
+
+		start := time.Now()
+
+		rows, err = database.DB.QueryContext(
+			r.Context(),
+			query,
+			status,
+			limit,
+			offset,
+		)
+
+		duration := time.Since(start).Seconds()
+		metrics.DatabaseQueryDuration.Observe(duration)
+
+	} else {
+		query = `
+			SELECT id, title, description, status, created_at, updated_at
+			FROM requests
+			ORDER BY ` + orderBy + ` ASC
+			LIMIT $1
+			OFFSET $2
+		`
+
+		start := time.Now()
+
+		rows, err = database.DB.QueryContext(
+			r.Context(),
+			query,
+			limit,
+			offset,
+		)
+
+		duration := time.Since(start).Seconds()
+		metrics.DatabaseQueryDuration.Observe(duration)
+	}
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-
-	duration := time.Since(start).Seconds()
-	metrics.DatabaseQueryDuration.Observe(duration)
 
 	defer rows.Close()
 	var requests []models.Request
