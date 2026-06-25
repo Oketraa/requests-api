@@ -25,3 +25,7 @@ Thumbs.db
 
 # Backups
 deploy/backups/*.sql
+
+# SSL-сертификаты
+deploy/certs/server.crt
+deploy/certs/server.key
