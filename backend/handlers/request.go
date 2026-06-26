@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+// GetRequests godoc
+//
+//	@Summary Получить список заявок
+//	@Description Возвращает список заявок
+//	@Tags requests
+//	@Produce json
+//	@Success 200 {array} models.Request
+//	@Router /api/requests [get]
 func GetRequests(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	limit := 10
@@ -136,6 +144,17 @@ func GetRequests(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, requests)
 }
 
+// GetRequestByID godoc
+//
+//	@Summary		Получить заявку по ID
+//	@Description	Возвращает одну заявку по её идентификатору
+//	@Tags			requests
+//	@Produce		json
+//	@Param			id	path		int	true	"ID заявки"
+//	@Success		200	{object}	models.Request
+//	@Failure		400	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Router			/api/requests/{id} [get]
 func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
@@ -180,6 +199,19 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
+// UpdateRequest godoc
+//
+//	@Summary		Обновить заявку
+//	@Description	Обновляет заявку по ID
+//	@Tags			requests
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"ID заявки"
+//	@Param			request	body		models.UpdateRequestInput	true	"Новые данные"
+//	@Success		200		{object}	models.Request
+//	@Failure		400		{object}	map[string]string
+//	@Failure		404		{object}	map[string]string
+//	@Router			/api/requests/{id} [put]
 func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
@@ -239,6 +271,18 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
+// CreateRequest godoc
+//
+//	@Summary		Создать заявку
+//	@Description	Создает новую заявку
+//	@Tags			requests
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		models.CreateRequestInput	true	"Данные заявки"
+//	@Success		200		{object}	models.Request
+//	@Failure		400		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/api/requests/create [post]
 func CreateRequest(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateRequestInput
 	err := json.NewDecoder(r.Body).Decode(&input)
@@ -305,6 +349,17 @@ func RequestByID(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "method is not allowed", http.StatusMethodNotAllowed)
 }
 
+// DeleteRequest godoc
+//
+//	@Summary		Удалить заявку
+//	@Description	Удаляет заявку по ID
+//	@Tags			requests
+//	@Produce		json
+//	@Param			id	path		int	true	"ID заявки"
+//	@Success		200	{object}	map[string]string
+//	@Failure		400	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Router			/api/requests/{id} [delete]
 func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
