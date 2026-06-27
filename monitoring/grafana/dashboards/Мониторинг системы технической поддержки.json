@@ -2,9 +2,9 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "ad5pj2t",
+    "name": "ad5pj2t2",
     "generation": 2,
-    "creationTimestamp": "2026-06-15T17:09:19Z",
+    "creationTimestamp": "2026-06-15T17:50:33Z",
     "labels": {},
     "annotations": {}
   },
@@ -170,7 +170,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(container_memory_usage_bytes{container_label_com_docker_compose_service!=\"\"}) by (container_label_com_docker_compose_service)",
+                        "expr": "sum(container_memory_usage_bytes{container_label_com_docker_compose_project=\"$project\", container_label_com_docker_compose_service!=\"\"}) by (container_label_com_docker_compose_service)",
                         "legendFormat": "{{container_label_com_docker_compose_service}}",
                         "range": true,
                         "uid": "prometheus-datasource"
@@ -1436,7 +1436,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "time() - container_start_time_seconds{container_label_com_docker_compose_service!=\"\", id!~\".*/\"}",
+                        "expr": "time() - container_start_time_seconds{container_label_com_docker_compose_project=\"$project\", container_label_com_docker_compose_service!=\"\", id!~\".*/\"}",
                         "legendFormat": "{{container_label_com_docker_compose_service}}",
                         "range": true,
                         "uid": "prometheus-datasource"
@@ -1515,7 +1515,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "changes(container_start_time_seconds{container_label_com_docker_compose_service!=\"\", id!~\".*/\"}[1h])",
+                        "expr": "sum(changes(container_start_time_seconds{container_label_com_docker_compose_project=\"$project\", container_label_com_docker_compose_service!=\"\", id!~\".*/\"}[1h])) by (container_label_com_docker_compose_service)",
                         "legendFormat": "{{container_label_com_docker_compose_service}}",
                         "range": true,
                         "uid": "prometheus-datasource"
@@ -1599,7 +1599,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[5m])) by (container_label_com_docker_compose_service) * 100 / 12",
+                        "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_project=\"$project\", container_label_com_docker_compose_service!=\"\"}[5m])) by (container_label_com_docker_compose_service) * 100 / 12",
                         "legendFormat": "{{service}}",
                         "range": true,
                         "uid": "prometheus-datasource"
@@ -2001,6 +2001,41 @@
           "regexApplyTo": "value",
           "sort": "disabled",
           "definition": "label_values(pg_stat_database_blks_hit, datname)",
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "project",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "label": "Проект",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
+            "spec": {
+              "qryType": 5,
+              "query": "label_values(container_start_time_seconds, container_label_com_docker_compose_project)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "labels": {
+              "grafana.app/export-label": "prometheus-1"
+            }
+          },
+          "regex": "",
+          "regexApplyTo": "value",
+          "sort": "disabled",
+          "definition": "label_values(container_start_time_seconds, container_label_com_docker_compose_project)",
           "options": [],
           "multi": false,
           "includeAll": false,

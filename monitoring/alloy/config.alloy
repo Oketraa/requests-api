@@ -8,7 +8,7 @@ discovery.relabel "app_filter" {
   // Шаг 1: Фильтруем только наш контейнер
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/requests_app"
+    regex         = ".*requests_app.*"
     action        = "keep"
   }
 
@@ -60,7 +60,7 @@ discovery.relabel "nginx_filter" {
   // Шаг 1: Фильтруем Nginx
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/requests_nginx"
+    regex         = ".*requests_nginx.*"
     action        = "keep"
   }
 
