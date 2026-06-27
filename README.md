@@ -8,10 +8,18 @@ REST API сервис для учета заявок на Go.
 
 - Go
 - PostgreSQL
+- Postgres Exporter
 - Docker
 - Nginx (Reverse Proxy)
 - REST API
 - Git
+- Grafana
+- cAdvisor
+- Prometheus
+- Grafana Loki
+- Grafana Alloy
+- Prometheus Node Exporter
+- GNU Make
 
 ---
 
@@ -54,18 +62,8 @@ cd requests-api
 
 ## 3. Создать .env файл
 
-Создать файл `.env` в корне проекта.
-
-Пример содержимого:
-
-```env
-APP_PORT=8080
-
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=app_user
-DB_PASSWORD=app_password
-DB_NAME=requests_db
+```bash
+make env
 ```
 
 ---
@@ -73,7 +71,7 @@ DB_NAME=requests_db
 ## 4. Запустить проект
 
 ```bash
-docker compose up --build
+make up
 ```
 
 После запуска сервер будет доступен:
@@ -247,25 +245,72 @@ ENV_NAME=yota ./destroy_test_env.sh
 # Структура проекта
 
 ```text
-requests_api/
+/requests-api
 ├── backend
-│   ├── database
-│   │   └── db.go
-│   ├── Dockerfile
-│   ├── go.mod
-│   ├── go.sum
-│   ├── handlers
-│   │   └── request.go
-│   ├── main.go
-│   ├── models
-│   │   └── request.go
-│   └── utils
-│       └── response.go
+│   ├── database
+│   │   └── db.go
+│   ├── Dockerfile
+│   ├── docs
+│   │   ├── docs.go
+│   │   ├── swagger.json
+│   │   └── swagger.yaml
+│   ├── go.mod
+│   ├── go.sum
+│   ├── handlers
+│   │   ├── health.go
+│   │   └── request.go
+│   ├── main.go
+│   ├── metrics
+│   │   ├── logic.go
+│   │   └── model.go
+│   ├── middleware
+│   │   ├── cors.go
+│   │   ├── logger.go
+│   │   ├── recovery.go
+│   │   ├── request_id.go
+│   │   └── user_agent.go
+│   ├── models
+│   │   └── request.go
+│   └── utils
+│       ├── response.go
+│       └── validation.go
 ├── deploy
-│   ├── docker-compose.yml
-│   ├── init.sql
-│   └── nginx.conf
-│   └── .env.example
+|   ├── .env.template
+│   ├── backups
+│   ├── docker-compose.test.yml
+│   ├── docker-compose.yml
+│   ├── init.sql
+│   ├── init.test.sql
+│   ├── nginx.conf
+│   └── scripts
+│       ├── backup_db.sh
+│       ├── check_env.sh
+│       ├── create_test_env.sh
+│       ├── destroy_test_env.sh
+│       ├── generate_env.sh
+│       ├── logs.sh
+│       ├── start.sh
+│       └── stop.sh
+├── documentation
+│   ├── grafana.md
+│   └── logs.md
+├── Makefile
+├── monitoring
+│   ├── alloy
+│   │   └── config.alloy
+│   ├── grafana
+│   │   ├── dashboards
+│   │   │   └── Мониторинг системы технической поддержки.json
+│   │   └── provisioning
+│   │       ├── dashboards
+│   │       │   └── dashboards.yaml
+│   │       └── datasources
+│   │           └── datasources.yaml
+│   ├── loki
+│   │   └── local-config.yaml
+│   └── prometheus
+│       ├── prometheus.test.production.yml
+│       └── prometheus.yml
 └── README.md
 ```
 
