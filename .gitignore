@@ -1,6 +1,7 @@
 # ENV
 deploy/.env
-
+deploy/.env.*
+!deploy/.env.template
 # Binaries
 *.exe
 *.exe~
@@ -25,3 +26,6 @@ Thumbs.db
 
 # Backups
 deploy/backups/*.sql
+
+# Артефакты тестовых окржений
+**/monitoring/prometheus/prometheus.test.*.yml

@@ -7,18 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
-const keyRequestID key = "request_id"
+const KeyRequestID key = "request_id"
 
 type key string
 
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := uuid.New().String()
+		id := r.Header.Get("X-Request-ID")
+		if id == "" {
+			id = uuid.New().String()
+		}
 
-		ctx := context.WithValue(r.Context(), keyRequestID, id)
-		r = r.WithContext(ctx)
+		ctx := context.WithValue(r.Context(), KeyRequestID, id)
+		w.Header().Set("X-Request-ID", id)
 
-		w.Header().Set("X-request-ID", id)
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
