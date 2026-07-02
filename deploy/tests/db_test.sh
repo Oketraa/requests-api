@@ -3,23 +3,13 @@ set -e
 
 echo "=== Запуск Теста Базы Данных ==="
 
-# Нам нужно находиться в папке deploy, чтобы docker compose сработал
-cd "$(dirname "$0")/.."
-
-# Загружаем переменные из .env, чтобы скрипт знал имя пользователя БД
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
-fi
-
-echo "Текущий статус контейнеров:"
-docker compose ps
-
 echo "Ожидание готовности PostgreSQL..."
 RETRIES=30
 
+# Запускаем цикл повторных проверок (до 30 попыток)
 while [ $RETRIES -gt 0 ]; do
-    # Пытаемся подключиться через pg_isready, используя пользователя из .env
-    if docker compose exec -T postgres pg_isready -U "${DB_USER:-postgres}" > /dev/null 2>&1; then
+    # Проверяем утилитой pg_isready внутри контейнера
+    if docker compose exec -T postgres pg_isready > /dev/null 2>&1; then
         echo "✅ Тест БД: PostgreSQL успешно запущена и готова к работе!"
         exit 0
     else
@@ -30,6 +20,4 @@ while [ $RETRIES -gt 0 ]; do
 done
 
 echo "❌ Тест БД провален! PostgreSQL не ответила в течение 30 секунд."
-echo "=== ЛОГИ КОНТЕЙНЕРА POSTGRES ДЛЯ ОТЛАДКИ ==="
-docker compose logs postgres
 exit 1
