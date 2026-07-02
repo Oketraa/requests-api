@@ -34,7 +34,7 @@ jobs:
       # Берем за основу .env.example, чтобы docker-compose не ругался на пустые переменные
       - name: Create .env file from example
         run: |
-          cp deploy/.env.example deploy/.env
+          cp deploy/.env.template deploy/.env
 
       # Шаг 5: Проверяем, собираются ли Docker-образы без ошибок (этап docker-build)
       - name: Build Docker images
