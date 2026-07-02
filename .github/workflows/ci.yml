@@ -50,22 +50,13 @@ jobs:
           # Даем контейнерам 5 секунд, чтобы база данных и веб-сервер успели полностью запуститься
           sleep 5
 
-      # Шаг 7: Наш Smoke-тест. Стучимся к запущенному Nginx и проверяем, что API работает
-      - name: Run Smoke Test
+      # Шаг 7: Запускаем наши автотесты инфраструктуры (9.3)
+      - name: Run Infrastructure Autotests
         run: |
-          # 1. Проверяем, что Nginx перенаправляет с HTTP на HTTPS (статус 301)
-          curl -I http://localhost/health
-          
-          # 2. Проверяем, что HTTPS отвечает "ok" (флаг -k нужен для самоподписанного сертификата)
-          RESPONSE=$(curl -k -s https://localhost/health)
-          echo "Ответ от API: $RESPONSE"
-          
-          # Если в ответе нет текста "status":"ok", валим пайплайн с ошибкой
-          if [[ "$RESPONSE" != *'"status":"ok"'* ]]; then
-            echo "Smoke-тест провален! API не работает или вернул ошибку."
-            exit 1
-          fi
-          echo "Smoke-тест успешно пройден!"
+          chmod +x deploy/tests/*.sh
+          ./deploy/tests/smoke_test.sh
+          ./deploy/tests/api_test.sh
+          ./deploy/tests/db_test.sh
 
       # Шаг 8: В конце аккуратно останавливаем и удаляем контейнеры, чтобы очистить память
       - name: Stop Docker Compose Stack
