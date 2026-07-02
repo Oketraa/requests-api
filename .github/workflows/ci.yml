@@ -1,0 +1,74 @@
+name: CI/CD Pipeline
+
+# Пайплайн будет запускаться автоматически при любом push или pull request в ветку main или в вашу ветку devops2-extra
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Робот запустит чистый сервер на Ubuntu
+
+    steps:
+      # Шаг 1: Скачиваем весь наш код из репозитория на виртуальный сервер
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Шаг 2: Устанавливаем Go (ведь наше бэкенд-приложение написано на Go)
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # Шаг 3: Проверяем, компилируется ли бэкенд (этап build / test)
+      - name: Build Go Backend Binary
+        run: |
+          cd backend
+          go build -v ./...
+
+      # Шаг 4: Подготавливаем тестовые переменные окружения (.env)
+      # Берем за основу .env.example, чтобы docker-compose не ругался на пустые переменные
+      - name: Create .env file from example
+        run: |
+          cp deploy/.env.example deploy/.env
+
+      # Шаг 5: Проверяем, собираются ли Docker-образы без ошибок (этап docker-build)
+      - name: Build Docker images
+        run: |
+          cd deploy
+          docker compose build
+
+      # Шаг 6: Запускаем контейнеры базы данных, бэкенда и Nginx (этап deploy-test)
+      - name: Start Docker Compose Stack
+        run: |
+          cd deploy
+          docker compose up -d postgres app nginx
+          # Даем контейнерам 5 секунд, чтобы база данных и веб-сервер успели полностью запуститься
+          sleep 5
+
+      # Шаг 7: Наш Smoke-тест. Стучимся к запущенному Nginx и проверяем, что API работает
+      - name: Run Smoke Test
+        run: |
+          # 1. Проверяем, что Nginx перенаправляет с HTTP на HTTPS (статус 301)
+          curl -I http://localhost/health
+          
+          # 2. Проверяем, что HTTPS отвечает "ok" (флаг -k нужен для самоподписанного сертификата)
+          RESPONSE=$(curl -k -s https://localhost/health)
+          echo "Ответ от API: $RESPONSE"
+          
+          # Если в ответе нет текста "status":"ok", валим пайплайн с ошибкой
+          if [[ "$RESPONSE" != *'"status":"ok"'* ]]; then
+            echo "Smoke-тест провален! API не работает или вернул ошибку."
+            exit 1
+          fi
+          echo "Smoke-тест успешно пройден!"
+
+      # Шаг 8: В конце аккуратно останавливаем и удаляем контейнеры, чтобы очистить память
+      - name: Stop Docker Compose Stack
+        run: |
+          cd deploy
+          docker compose down
