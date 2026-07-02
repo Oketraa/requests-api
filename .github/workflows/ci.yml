@@ -41,22 +41,26 @@ jobs:
         run: |
           cd deploy
           docker compose build
+      
+        # Шаг 5.5: Генерируем временные SSL-сертификаты в облаке, чтобы Nginx смог запуститься
+      - name: Generate SSL Certificates in CI
+        run: |
+          chmod +x deploy/scripts/generate_selfsigned_cert.sh
+          ./deploy/scripts/generate_selfsigned_cert.sh
+
 
       # Шаг 6: Запускаем контейнеры базы данных, бэкенда и Nginx (этап deploy-test)
       - name: Start Docker Compose Stack
         run: |
           cd deploy
           docker compose up -d postgres app nginx
-          # Даем контейнерам 5 секунд, чтобы база данных и веб-сервер успели полностью запуститься
-          sleep 5
+          sleep 15
 
-      # Шаг 7: Запускаем наши автотесты инфраструктуры (9.3)
+      # Шаг 7: Запускаем автотесты инфраструктуры одной командой
       - name: Run Infrastructure Autotests
         run: |
           chmod +x deploy/tests/*.sh
-          ./deploy/tests/smoke_test.sh
-          ./deploy/tests/api_test.sh
-          ./deploy/tests/db_test.sh
+          ./deploy/tests/run_all_tests.sh
 
       # Шаг 8: В конце аккуратно останавливаем и удаляем контейнеры, чтобы очистить память
       - name: Stop Docker Compose Stack
