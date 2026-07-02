@@ -1,7 +1,7 @@
 # ENV
 deploy/.env
-deploy/scripts/.env.*
-
+deploy/.env.*
+!deploy/.env.template
 # Binaries
 *.exe
 *.exe~
