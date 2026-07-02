@@ -1,0 +1,172 @@
+services:
+  postgres:
+    image: postgres:17.10-alpine3.22
+    container_name: ${ENV_NAME}_requests_postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    restart: on-failure
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.test.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - helpdesk_network
+
+  app:
+    build: ../backend
+    container_name: ${ENV_NAME}_requests_app
+    expose:
+      - "8080"
+    restart: on-failure
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - helpdesk_network
+
+  nginx:
+    image: nginx:1.31.1-alpine
+    container_name: ${ENV_NAME}_requests_nginx
+    ports:
+      - "${NGINX_PORT:-80}:80" 
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - helpdesk_network
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    container_name: ${ENV_NAME}_prometheus
+    restart: on-failure
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    environment:
+      - ENV_NAME=${ENV_NAME}
+    volumes:
+      - ../monitoring/prometheus/prometheus.test.${ENV_NAME}.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - helpdesk_network
+
+  grafana:
+    image: grafana/grafana:13.1.0-25893932881
+    container_name: ${ENV_NAME}_grafana
+    restart: on-failure
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - ENV_NAME=${ENV_NAME}
+    volumes:
+      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - helpdesk_network
+
+  loki:
+    image: grafana/loki:3.7.2
+    container_name: ${ENV_NAME}_loki
+    user: "root"
+    restart: on-failure
+    environment:
+      - ENV_NAME=${ENV_NAME}
+    command: 
+      - '--config.file=/etc/loki/local-config.yaml'
+      - '--config.expand-env=true'
+    volumes:
+      - ../monitoring/loki:/etc/loki:ro
+      - loki_data:/var/loki:rw
+    networks:
+      - helpdesk_network
+
+  alloy:
+    image: grafana/alloy:v1.17.0
+    container_name: ${ENV_NAME}_alloy
+    privileged: true
+    restart: on-failure
+    environment:
+      - ENV_NAME=${ENV_NAME}
+    command:
+      - 'run'
+      - '/etc/alloy/config.alloy'
+      - '--storage.path=/tmp/alloy'
+    volumes:
+      - ../monitoring/alloy:/etc/alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - helpdesk_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: ${ENV_NAME}_cadvisor
+    restart: on-failure
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /dev:/dev:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - helpdesk_network
+
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    container_name: ${ENV_NAME}_node-exporter
+    restart: on-failure
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)'
+    networks:
+      - helpdesk_network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.19.1
+    container_name: ${ENV_NAME}_postgres-exporter
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+    networks:
+      - helpdesk_network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  helpdesk_network:
+    driver: bridge

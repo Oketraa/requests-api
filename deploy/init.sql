@@ -6,3 +6,9 @@ CREATE TABLE IF NOT EXISTS requests (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS client_user_agents (
+    id SERIAL PRIMARY KEY,
+    raw_user_agent TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
