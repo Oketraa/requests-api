@@ -1,6 +1,6 @@
 FROM golang:1.26.3-alpine3.23 as builder
 WORKDIR /app
-COPY go.mod go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -o requests_api .

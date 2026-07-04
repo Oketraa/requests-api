@@ -8,10 +8,18 @@ REST API сервис для учета заявок на Go.
 
 - Go
 - PostgreSQL
+- Postgres Exporter
 - Docker
 - Nginx (Reverse Proxy)
 - REST API
 - Git
+- Grafana
+- cAdvisor
+- Prometheus
+- Grafana Loki
+- Grafana Alloy
+- Prometheus Node Exporter
+- GNU Make
 
 ---
 
@@ -54,18 +62,8 @@ cd requests-api
 
 ## 3. Создать .env файл
 
-Создать файл `.env` в корне проекта.
-
-Пример содержимого:
-
-```env
-APP_PORT=8080
-
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=app_user
-DB_PASSWORD=app_password
-DB_NAME=requests_db
+```bash
+make env
 ```
 
 ---
@@ -73,7 +71,7 @@ DB_NAME=requests_db
 ## 4. Запустить проект
 
 ```bash
-docker compose up --build
+make up
 ```
 
 После запуска сервер будет доступен:
@@ -153,29 +151,225 @@ curl -X DELETE http://localhost/api/requests/1
 ```
 
 ---
+# Скрипты эксплуатации (DevOps 4)
 
+## Запуск проекта
+
+```bash
+./deploy/scripts/start.sh
+```
+
+## Остановка проекта
+
+```bash
+./deploy/scripts/stop.sh
+```
+
+## Просмотр логов
+
+```bash
+# Все сервисы
+./deploy/scripts/logs.sh
+
+# Конкретный сервис
+./deploy/scripts/logs.sh backend
+```
+
+## Резервное копирование базы данных
+
+```bash
+./deploy/scripts/backup_db.sh
+```
+
+Бэкап сохраняется в папку `deploy/backups/` с именем вида `backup_2026-01-01_12-00-00.sql`
+
+## Восстановление базы из бэкапа
+
+### Стратегия резервного копирования
+
+- Бэкапы создаются вручную командой `./deploy/scripts/backup_db.sh`
+- Каждый бэкап сохраняется в отдельный файл с датой и временем
+- Файлы хранятся в папке `deploy/backups/`
+- Формат имени файла: `backup_ГГГГ-ММ-ДД_ЧЧ-ММ-СС.sql`
+- Рекомендуется делать бэкап перед каждым обновлением проекта
+
+### Порядок восстановления
+
+1. Убедись что проект запущен:
+
+```bash
+./deploy/scripts/start.sh
+```
+
+2. Посмотри список доступных бэкапов:
+
+```bash
+ls -la deploy/backups/
+```
+
+3. Восстанови нужный бэкап:
+
+```bash
+cat deploy/backups/backup_2026-01-01_12-00-00.sql | \
+  docker compose exec -T postgres psql -U app_user requests_db
+```
+
+4. Проверь что данные восстановились:
+
+```bash
+curl http://localhost/api/requests
+```
+### Восстановление через скрипт
+
+```bash
+./deploy/scripts/restore_db.sh ./deploy/backups/backup_2026-01-01_12-00-00.sql
+```
+
+Скрипт автоматически проверяет что файл существует и не пустой.
+
+### Восстановление на чистую базу
+
+Если база данных была полностью удалена:
+
+1. Запусти проект — база создастся автоматически:
+```bash
+./deploy/scripts/start.sh
+```
+
+2. Восстанови данные из бэкапа:
+```bash
+./deploy/scripts/restore_db.sh ./deploy/backups/backup_2026-01-01_12-00-00.sql
+```
+
+3. Проверь что данные восстановились:
+```bash
+curl http://localhost/api/requests
+```
+### Ротация бэкапов
+
+Автоматически хранятся последние 5 бэкапов — старые удаляются при создании нового.
+
+---
+
+## Безопасность
+
+Nginx настроен со следующими мерами защиты:
+
+- Security headers — защита от XSS и clickjacking
+- Rate limiting — не более 10 запросов в секунду с одного IP
+- Ограничение размера запроса — максимум 1MB
+
+Проверить headers:
+```bash
+curl -I http://localhost/health
+```
+
+---
+
+## Healthcheck
+
+Контейнеры имеют автоматические проверки состояния:
+
+- `postgres` — проверяется через `pg_isready`
+- `app` — проверяется через `GET /health`
+- `nginx` — запускается только после того как `app` стал healthy
+
+Проверить статус:
+```bash
+docker compose -f deploy/docker-compose.yml ps
+```
+---
+
+### Тестовые окружения
+
+Для проверки новых функций в изолированных контурах (например, для ветки `yota`) на одной машине с рабочем окружением используются тестовые окружения. Изоляция обеспечивается на уровне метаданных Docker Compose. Управление тестовым контуром полностью автоматизировано локальными скриптами.
+
+Если вы хотите определить свои переменные окружения. Скопируйте файл .env.example, переименуйте копию в формат .env.${ENV_NAME} (например, .env.yota). В противном случае, данный файл будет создан автоматически.
+
+При запуске скрипт сообщит логин и пароль от Grafana, в случае их генерации, а также порты на которые будут проброшены контейнеры.
+
+1. Запуск тестового окружения:
+```bash
+cd deploy/scripts
+ENV_NAME=yota ./create_test_env.sh
+```
+
+2. Удаление тестового окружения
+```bash
+cd deploy/scripts
+ENV_NAME=yota ./destroy_test_env.sh
+```
+
+---
 # Структура проекта
 
 ```text
-requests_api/
+/requests-api
 ├── backend
-│   ├── database
-│   │   └── db.go
-│   ├── Dockerfile
-│   ├── go.mod
-│   ├── go.sum
-│   ├── handlers
-│   │   └── request.go
-│   ├── main.go
-│   ├── models
-│   │   └── request.go
-│   └── utils
-│       └── response.go
+│   ├── database
+│   │   └── db.go
+│   ├── Dockerfile
+│   ├── docs
+│   │   ├── docs.go
+│   │   ├── swagger.json
+│   │   └── swagger.yaml
+│   ├── go.mod
+│   ├── go.sum
+│   ├── handlers
+│   │   ├── health.go
+│   │   └── request.go
+│   ├── main.go
+│   ├── metrics
+│   │   ├── logic.go
+│   │   └── model.go
+│   ├── middleware
+│   │   ├── cors.go
+│   │   ├── logger.go
+│   │   ├── recovery.go
+│   │   ├── request_id.go
+│   │   └── user_agent.go
+│   ├── models
+│   │   └── request.go
+│   └── utils
+│       ├── response.go
+│       └── validation.go
 ├── deploy
-│   ├── docker-compose.yml
-│   ├── init.sql
-│   └── nginx.conf
-│   └── .env.example
+|   ├── .env.template
+│   ├── backups
+│   ├── docker-compose.test.yml
+│   ├── docker-compose.yml
+│   ├── init.sql
+│   ├── init.test.sql
+│   ├── nginx.conf
+│   └── scripts
+│       ├── backup_db.sh
+│       ├── check_env.sh
+│       ├── create_test_env.sh
+│       ├── destroy_test_env.sh
+│       ├── generate_env.sh
+│       ├── logs.sh
+│       ├── start.sh
+│       └── stop.sh
+├── documentation
+│   ├── grafana.md
+│   └── logs.md
+├── Makefile
+├── monitoring
+│   ├── alloy
+│   │   └── config.alloy
+│   ├── grafana
+│   │   ├── dashboards
+│   │   │   └── Мониторинг системы технической поддержки.json
+│   │   └── provisioning
+│   │       ├── dashboards
+│   │       │   └── dashboards.yaml
+│   │       └── datasources
+│   │           └── datasources.yaml
+│   ├── loki
+│   │   └── local-config.yaml
+│   └── prometheus
+│       ├── prometheus.test.production.yml
+│       └── prometheus.yml
 └── README.md
 ```
 

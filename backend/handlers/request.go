@@ -7,18 +7,111 @@ import (
 	"strconv"
 	"strings"
 	"study/database"
+	"study/metrics"
 	"study/models"
 	"study/utils"
+	"time"
 )
 
+// GetRequests godoc
+//
+//	@Summary Получить список заявок
+//	@Description Возвращает список заявок
+//	@Tags requests
+//	@Produce json
+//	@Success 200 {array} models.Request
+//	@Router /api/requests [get]
 func GetRequests(w http.ResponseWriter, r *http.Request) {
-	query := `
-		SELECT id, title, description, status, created_at, updated_at
-		FROM requests
-		ORDER BY id ASC
-	`
+	page := 1
+	limit := 10
 
-	rows, err := database.DB.Query(query)
+	pagePar := r.URL.Query().Get("page")
+	limitPar := r.URL.Query().Get("limit")
+	status := r.URL.Query().Get("status")
+	sort := r.URL.Query().Get("sort")
+
+	orderBy := "id"
+
+	if sort == "created_at" {
+		orderBy = "created_at"
+	}
+
+	if sort == "updated_at" {
+		orderBy = "updated_at"
+	}
+
+	if pagePar != "" {
+		pageNum, err := strconv.Atoi(pagePar)
+
+		if err == nil && pageNum > 0 {
+			page = pageNum
+		}
+	}
+
+	if limitPar != "" {
+		limitNum, err := strconv.Atoi(limitPar)
+
+		if err == nil && limitNum > 0 {
+			limit = limitNum
+		}
+	}
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	var (
+		query string
+		rows  *sql.Rows
+		err   error
+	)
+
+	if status != "" {
+		query = `
+			SELECT id, title, description, status, created_at, updated_at
+			FROM requests
+			WHERE status = $1
+			ORDER BY ` + orderBy + ` ASC
+			LIMIT $2
+			OFFSET $3
+		`
+
+		start := time.Now()
+
+		rows, err = database.DB.QueryContext(
+			r.Context(),
+			query,
+			status,
+			limit,
+			offset,
+		)
+
+		duration := time.Since(start).Seconds()
+		metrics.DatabaseQueryDuration.Observe(duration)
+
+	} else {
+		query = `
+			SELECT id, title, description, status, created_at, updated_at
+			FROM requests
+			ORDER BY ` + orderBy + ` ASC
+			LIMIT $1
+			OFFSET $2
+		`
+
+		start := time.Now()
+
+		rows, err = database.DB.QueryContext(
+			r.Context(),
+			query,
+			limit,
+			offset,
+		)
+
+		duration := time.Since(start).Seconds()
+		metrics.DatabaseQueryDuration.Observe(duration)
+	}
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
@@ -51,6 +144,17 @@ func GetRequests(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, requests)
 }
 
+// GetRequestByID godoc
+//
+//	@Summary		Получить заявку по ID
+//	@Description	Возвращает одну заявку по её идентификатору
+//	@Tags			requests
+//	@Produce		json
+//	@Param			id	path		int	true	"ID заявки"
+//	@Success		200	{object}	models.Request
+//	@Failure		400	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Router			/api/requests/{id} [get]
 func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
@@ -69,7 +173,8 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 
 	var request models.Request
 
-	err = database.DB.QueryRow(query, id).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, id).Scan(
 		&request.ID,
 		&request.Title,
 		&request.Description,
@@ -89,9 +194,24 @@ func GetRequestByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
+// UpdateRequest godoc
+//
+//	@Summary		Обновить заявку
+//	@Description	Обновляет заявку по ID
+//	@Tags			requests
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"ID заявки"
+//	@Param			request	body		models.UpdateRequestInput	true	"Новые данные"
+//	@Success		200		{object}	models.Request
+//	@Failure		400		{object}	map[string]string
+//	@Failure		404		{object}	map[string]string
+//	@Router			/api/requests/{id} [put]
 func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
@@ -103,16 +223,17 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input models.UpdateRequestInput
-
 	err = json.NewDecoder(r.Body).Decode(&input)
 
-	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	validationError := utils.UpdateValidator(input)
+
+	if validationError != "" {
+		utils.WriteError(w, http.StatusBadRequest, validationError)
 		return
 	}
 
-	if !models.AllowedStatus[input.Status] {
-		http.Error(w, "invalid status", http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -133,17 +254,14 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	request.Description = input.Description
 	request.Status = input.Status
 
-	err = database.DB.QueryRow(
-		query,
-		input.Title,
-		input.Description,
-		input.Status,
-		id,
-	).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, input.Title, input.Description, input.Status, id).Scan(
 		&request.ID,
 		&request.CreatedAt,
 		&request.UpdatedAt,
 	)
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	if err != nil {
 		http.Error(w, "request not found", http.StatusNotFound)
@@ -153,12 +271,31 @@ func UpdateRequest(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, request)
 }
 
+// CreateRequest godoc
+//
+//	@Summary		Создать заявку
+//	@Description	Создает новую заявку
+//	@Tags			requests
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		models.CreateRequestInput	true	"Данные заявки"
+//	@Success		200		{object}	models.Request
+//	@Failure		400		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/api/requests/create [post]
 func CreateRequest(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateRequestInput
 	err := json.NewDecoder(r.Body).Decode(&input)
 
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	validationError := utils.CreateValidator(input)
+
+	if validationError != "" {
+		utils.WriteError(w, http.StatusBadRequest, validationError)
 		return
 	}
 
@@ -174,11 +311,8 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 	request.Description = input.Description
 	request.Status = "new"
 
-	err = database.DB.QueryRow(
-		query,
-		input.Title,
-		input.Description,
-	).Scan(
+	start := time.Now()
+	err = database.DB.QueryRowContext(r.Context(), query, input.Title, input.Description).Scan(
 		&request.ID,
 		&request.Status,
 		&request.CreatedAt,
@@ -190,7 +324,10 @@ func CreateRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, request)
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
+
+	utils.WriteJSON(w, http.StatusCreated, request)
 }
 
 func RequestByID(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +349,17 @@ func RequestByID(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "method is not allowed", http.StatusMethodNotAllowed)
 }
 
+// DeleteRequest godoc
+//
+//	@Summary		Удалить заявку
+//	@Description	Удаляет заявку по ID
+//	@Tags			requests
+//	@Produce		json
+//	@Param			id	path		int	true	"ID заявки"
+//	@Success		200	{object}	map[string]string
+//	@Failure		400	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Router			/api/requests/{id} [delete]
 func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	idString := strings.TrimPrefix(path, "/api/requests/")
@@ -226,12 +374,16 @@ func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 		DELETE FROM requests
 		WHERE id = $1
 	`
-	result, err := database.DB.Exec(query, id)
+	start := time.Now()
+	result, err := database.DB.ExecContext(r.Context(), query, id)
 
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+
+	duration := time.Since(start).Seconds()
+	metrics.DatabaseQueryDuration.Observe(duration)
 
 	rowsAffected, err := result.RowsAffected()
 
@@ -244,5 +396,5 @@ func DeleteRequest(w http.ResponseWriter, r *http.Request) {
 		"message": "request deleted",
 	}
 
-	utils.WriteJSON(w, http.StatusOK, response)
+	utils.WriteJSON(w, http.StatusNoContent, response)
 }
