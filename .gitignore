@@ -27,5 +27,12 @@ Thumbs.db
 # Backups
 deploy/backups/*.sql
 
+# Backups
+deploy/backups/*.sql
+
+# SSL-сертификаты
+deploy/certs/server.crt
+deploy/certs/server.key
+
 # Артефакты тестовых окржений
 **/monitoring/prometheus/prometheus.test.*.yml

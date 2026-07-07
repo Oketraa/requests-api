@@ -1,0 +1,69 @@
+name: CI/CD Pipeline
+
+# Пайплайн будет запускаться автоматически при любом push или pull request в ветку main или в вашу ветку devops2-extra
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Робот запустит чистый сервер на Ubuntu
+
+    steps:
+      # Шаг 1: Скачиваем весь наш код из репозитория на виртуальный сервер
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Шаг 2: Устанавливаем Go (ведь наше бэкенд-приложение написано на Go)
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # Шаг 3: Проверяем, компилируется ли бэкенд (этап build / test)
+      - name: Build Go Backend Binary
+        run: |
+          cd backend
+          go build -v ./...
+
+      # Шаг 4: Подготавливаем тестовые переменные окружения (.env)
+      # Берем за основу .env.example, чтобы docker-compose не ругался на пустые переменные
+      - name: Create .env file from example
+        run: |
+          cp deploy/.env.template deploy/.env
+
+      # Шаг 5: Проверяем, собираются ли Docker-образы без ошибок (этап docker-build)
+      - name: Build Docker images
+        run: |
+          cd deploy
+          docker compose build
+      
+        # Шаг 5.5: Генерируем временные SSL-сертификаты в облаке, чтобы Nginx смог запуститься
+      - name: Generate SSL Certificates in CI
+        run: |
+          chmod +x deploy/scripts/generate_selfsigned_cert.sh
+          ./deploy/scripts/generate_selfsigned_cert.sh
+
+
+      # Шаг 6: Запускаем контейнеры базы данных, бэкенда и Nginx (этап deploy-test)
+      - name: Start Docker Compose Stack
+        run: |
+          cd deploy
+          docker compose up -d postgres app nginx
+          sleep 15
+
+      # Шаг 7: Запускаем автотесты инфраструктуры одной командой
+      - name: Run Infrastructure Autotests
+        run: |
+          chmod +x deploy/tests/*.sh
+          ./deploy/tests/run_all_tests.sh
+
+      # Шаг 8: В конце аккуратно останавливаем и удаляем контейнеры, чтобы очистить память
+      - name: Stop Docker Compose Stack
+        run: |
+          cd deploy
+          docker compose down
